@@ -34,7 +34,6 @@ def log_to_db():
     PulseCnt = 0
 
     # Insert into db
-    print("Inserting into db, cnt: {}".format(cnt))
     points = []
     point = {
         "measurement": 'PulseCnt',
@@ -44,8 +43,14 @@ def log_to_db():
             }
     points.append(point)
     client = InfluxDBClient(HOST, PORT, USER, PASSWORD, DBNAME)
-    client.switch_database(DBNAME)
-    client.write_points(points)
+    #client.switch_database(DBNAME)
+
+    if(client.write_points(points)):
+        print("Inserting into influxdb, cnt: {}".format(cnt))
+    else:
+       	# failure, add the point to the counter again
+        PulseCnt = PulseCnt + cnt
+        print("Warning: failed inserting {} pulses into influxdb".format(cnt))
 
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
@@ -54,7 +59,7 @@ def rising_edge_cb(channel):
     global LED_IO_NBR
 
     PulseCnt = PulseCnt+1
-    print(PulseCnt)
+    #print(PulseCnt)
 
     # Toggle led
     if GPIO.input(LED_IO_NBR):
