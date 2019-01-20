@@ -16,11 +16,10 @@ PORT =  8086
 
 # Global parameters
 PulseCnt = 0
-bFallingEdgeDetected = False
-start_time = 0
+
+# defines
 PULSE_IO_NBR = 20
 LED_IO_NBR = 21
-
 PULSE_DEBOUNCE_ms = 200
 DB_LOG_INTERVAL_minutes = 1
 
@@ -43,7 +42,6 @@ def log_to_db():
             }
     points.append(point)
     client = InfluxDBClient(HOST, PORT, USER, PASSWORD, DBNAME)
-    #client.switch_database(DBNAME)
 
     if(client.write_points(points)):
         print("Inserting into influxdb, cnt: {}".format(cnt))
@@ -61,7 +59,7 @@ def rising_edge_cb(channel):
     PulseCnt = PulseCnt+1
     #print(PulseCnt)
 
-    # Toggle led
+    # New pulse detected, toggle the led
     if GPIO.input(LED_IO_NBR):
         GPIO.output(LED_IO_NBR, GPIO.LOW)
     else:
@@ -72,8 +70,8 @@ def rising_edge_cb(channel):
 GPIO.setmode(GPIO.BCM)      # set up BCM GPIO numbering
 GPIO.setwarnings(True)
 
-# Setup pulse inputs and connect callback in edges
-GPIO.setup(PULSE_IO_NBR, GPIO.IN, pull_up_down=GPIO.PUD_UP) # set as input
+# Setup pulse input with pull up and connect callback on rising in edges
+GPIO.setup(PULSE_IO_NBR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(PULSE_IO_NBR, GPIO.RISING,  callback=rising_edge_cb, bouncetime=PULSE_DEBOUNCE_ms)
 
 # Led output
@@ -89,6 +87,5 @@ try:
     while True:
        	schedule.run_pending()
         time.sleep(1)
-
 finally:
     GPIO.cleanup() # clean up 
