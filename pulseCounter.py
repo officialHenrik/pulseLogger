@@ -2,7 +2,6 @@
 
 import RPi.GPIO as GPIO
 import time
-from datetime import datetime
 import schedule
 from influxdb import InfluxDBClient
 
