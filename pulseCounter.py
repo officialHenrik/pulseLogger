@@ -20,7 +20,7 @@ PulseCnt = 0
 # defines
 PULSE_IO_NBR = 20
 LED_IO_NBR = 21
-PULSE_DEBOUNCE_ms = 200
+PULSE_DEBOUNCE_ms = 4
 DB_LOG_INTERVAL_minutes = 1
 
 # ------------------------------------------------------
