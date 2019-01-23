@@ -45,7 +45,8 @@ def log_to_db():
         "tags": {
             "location": "home",
             "sensor": "p.1",
-            "resolution": "10000"
+            "resolution": "10000",
+            "batch_length_s": "60" 
         },
         "fields": {
              "value": cnt,

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from math import sqrt
+
 # ----------------------------------------------------
 class Data:
     def __init__(self):
@@ -25,9 +27,9 @@ class BatchCollector:
 
     def add(self, x):
         # Add new sample to batch
-        self.batch.sum    = self.batch.sum + x
-        self.batch.sumSqr = self.batch.sumSqr + x*x
-        self.batch.n     += 1
+        self.batch.sum    += x
+        self.batch.sumSqr += x*x
+        self.batch.n      += 1
 
         # Track max/min
         if x > self.batch.max:
@@ -67,3 +69,6 @@ class BatchCollector:
 
     def getStdSqr(self):
         return self.result.stdSqr
+
+    def getStd(self):
+        return sqrt(self.getStdSqr)
