@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import RPi.GPIO as GPIO
@@ -15,12 +16,29 @@ PORT =  8086
 
 # Global parameters
 PulseCnt = 0
+t0 = 0
+tp = 0
 
 # defines
+VERBOSE = False
 PULSE_IO_NBR = 20
 LED_IO_NBR = 21
-PULSE_DEBOUNCE_ms = 1
+PULSE_DEBOUNCE_ms = 5
 DB_LOG_INTERVAL_minutes = 1
+
+# -----------------------------------------------------
+class Timer:
+  def __init__(self):
+    self.start = time.time()
+
+  def restart(self):
+    self.start = time.time()
+
+  def get_time_hhmmss(self):
+    return time.time()-self.start
+
+t1 = Timer()
+t2 = Timer()
 
 # ------------------------------------------------------
 # Callback for writing data to database
@@ -30,11 +48,17 @@ def log_to_db():
     # Sample pulse counter
     cnt = PulseCnt
     PulseCnt = 0
+    print("({})".format(cnt))
 
     # Insert into db
     points = []
     point = {
         "measurement": 'PulseCnt',
+        "tags": {
+            "location": "home",
+            "sensor": "p.1",
+            "resolution": "10000"
+        },
         "fields": {
              "value": cnt
                 }
@@ -43,7 +67,8 @@ def log_to_db():
     client = InfluxDBClient(HOST, PORT, USER, PASSWORD, DBNAME)
 
     if(client.write_points(points)):
-        print("Inserting into influxdb, cnt: {}".format(cnt))
+        if VERBOSE:
+            print("Inserting into influxdb, cnt: {}".format(cnt))
     else:
        	# failure, add the point to the counter again
         PulseCnt = PulseCnt + cnt
@@ -51,18 +76,38 @@ def log_to_db():
 
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
-def rising_edge_cb(channel):
-    global PulseCnt
-    global LED_IO_NBR
+def edge_cb(channel):
+    global PulseCnt, t0, tp
 
-    PulseCnt = PulseCnt+1
-    #print(PulseCnt)
+    pulseLen = 0
+    timeSinceLast = 0
+    now = time.time()
 
-    # New pulse detected, toggle the led
-    if GPIO.input(LED_IO_NBR):
-        GPIO.output(LED_IO_NBR, GPIO.LOW)
+    if GPIO.input(PULSE_IO_NBR):
+        pulseLen = now - t0
+        tp = now
     else:
-        GPIO.output(LED_IO_NBR,GPIO.HIGH)
+        timeSinceLast = now - tp
+        if VERBOSE:
+            print("\n{},  tp {}".format(PulseCnt, timeSinceLast))
+
+    t0 = now
+
+    if(pulseLen > 0.015 and pulseLen < 0.15):
+        if VERBOSE:
+            print("{}, len {}".format(PulseCnt, pulseLen))
+
+        PulseCnt = PulseCnt+1
+        print(".", end="", flush=True)
+
+        # New pulse detected, toggle the led
+        if GPIO.input(LED_IO_NBR):
+            GPIO.output(LED_IO_NBR, GPIO.LOW)
+        else:
+            GPIO.output(LED_IO_NBR,GPIO.HIGH)
+    else:
+        if pulseLen > 0:
+            print("Pulse discarded, len {}".format(pulseLen))
 
 # ------------------------------------------------------
 # Setup
@@ -71,7 +116,7 @@ GPIO.setwarnings(True)
 
 # Setup pulse input with pull up and connect callback on rising in edges
 GPIO.setup(PULSE_IO_NBR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(PULSE_IO_NBR, GPIO.RISING,  callback=rising_edge_cb, bouncetime=PULSE_DEBOUNCE_ms)
+GPIO.add_event_detect(PULSE_IO_NBR, GPIO.BOTH,  callback=edge_cb, bouncetime=PULSE_DEBOUNCE_ms)
 
 # Led output
 GPIO.setup(LED_IO_NBR,GPIO.OUT)
@@ -81,7 +126,12 @@ schedule.every(DB_LOG_INTERVAL_minutes).minutes.do(log_to_db)
 
 # ------------------------------------------------------
 # Run forever
-print("Pulse counter enabled")
+print("   _                __                  ")
+print("  |_)    |  _  _   /   _    __ _|_ _ __ ")
+print("  |  |_| | _> (/_  \__(_)|_|| | |_(/_|  ")
+print("----------------------------------------")
+
+
 try:
     while True:
        	schedule.run_pending()
