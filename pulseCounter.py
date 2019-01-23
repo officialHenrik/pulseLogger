@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 
 import RPi.GPIO as GPIO
@@ -14,13 +13,8 @@ DBNAME = 'test'
 HOST = 'localhost'
 PORT =  8086
 
-# Global parameters
-PulseCnt = 0
-t0 = 0
-tp = 0
-
 # defines
-VERBOSE = False
+VERBOSE = True
 PULSE_IO_NBR = 20
 LED_IO_NBR = 21
 PULSE_DEBOUNCE_ms = 5
@@ -28,17 +22,18 @@ DB_LOG_INTERVAL_minutes = 1
 
 # -----------------------------------------------------
 class Timer:
-  def __init__(self):
-    self.start = time.time()
+    def __init__(self):
+        self.start = time.time()
 
-  def restart(self):
-    self.start = time.time()
+    def sampleAndReset(self):
+        now = time.time()
+        diff = now - self.start
+        self.start = now
+        return diff
 
-  def get_time_hhmmss(self):
-    return time.time()-self.start
-
-t1 = Timer()
-t2 = Timer()
+# Global parameters
+PulseCnt = 0
+tmr = Timer()
 
 # ------------------------------------------------------
 # Callback for writing data to database
@@ -77,23 +72,22 @@ def log_to_db():
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
 def edge_cb(channel):
-    global PulseCnt, t0, tp
+    global PulseCnt, tmr
 
     pulseLen = 0
     timeSinceLast = 0
-    now = time.time()
+    PulseDetected = False
 
     if GPIO.input(PULSE_IO_NBR):
-        pulseLen = now - t0
-        tp = now
+        pulseLen = tmr.sampleAndReset()
+        if(pulseLen > 0.015 and pulseLen < 0.15):
+            PulseDetected = True
     else:
-        timeSinceLast = now - tp
+        timeSinceLast = tmr.sampleAndReset()
         if VERBOSE:
             print("\n{},  tp {}".format(PulseCnt, timeSinceLast))
 
-    t0 = now
-
-    if(pulseLen > 0.015 and pulseLen < 0.15):
+    if PulseDetected:
         if VERBOSE:
             print("{}, len {}".format(PulseCnt, pulseLen))
 
