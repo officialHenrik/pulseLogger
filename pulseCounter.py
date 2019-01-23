@@ -4,7 +4,9 @@ import RPi.GPIO as GPIO
 import time
 import schedule
 from influxdb import InfluxDBClient
-import math
+
+from batchCollector import BatchCollector
+from timer import Timer
 
 # ------------------------------------------------------
 # Influx cfg
@@ -20,68 +22,12 @@ PULSE_IO_NBR = 20
 LED_IO_NBR = 21
 PULSE_DEBOUNCE_ms = 5
 DB_LOG_INTERVAL_minutes = 1
+PULSE_LEN_MIN_s = 0.015
+PULSE_LEN_MAX_s = 0.15
 
-# ----------------------------------------------------
-class PulseStat:
-    def __init__(self):
-        self.sum = 0.0
-        self.sumSqr = 0.0
-        self.n = 0
-        self.last_std = 0.0
-        self.last_mean = 0.0
-        self.last_min = 0.0
-        self.last_max = 0.0
-        self.last_n = 0.0
-        self.min = 10000.0
-        self.max = 0.0
-    def add(self, sample):
-        self.sum = self.sum + sample
-        self.sumSqr = self.sumSqr + sample*sample
-        self.n = self.n + 1
-        if sample > self.max:
-            self.max = sample
-        if sample < self.min:
-            self.min = sample
-    def sampleAndReset(self):
-        n = self.n
-        sum = self.sum
-        self.n = 0
-        self.sum = 0.0
-        self.last_n = n
-        self.last_mean = sum/n
-        self.last_std = math.sqrt(self.sumSqr/n - self.last_mean*self.last_mean) 
-        self.last_max = self.max
-        self.last_min = self.min
-        self.sumSqr = 0.0
-        self.min = 10000.0
-        self.max = 0.0
-    def getCntNow(self):
-        return self.n
-    def getMean(self):
-        return self.last_mean
-    def getCnt(self):
-        return self.last_n
-    def getMin(self):
-        return self.last_min
-    def getMax(self):
-        return self.last_max
-    def getStd(self):
-        return self.last_std
-
-# -----------------------------------------------------
-class Timer:
-    def __init__(self):
-        self.start = time.time()
-
-    def sampleAndReset(self):
-        now = time.time()
-        diff = now - self.start
-        self.start = now
-        return diff
-
-# Global parameters
+# Global
 tmr = Timer()
-pulseStat = PulseStat()
+pulseStat = BatchCollector()
 
 # ------------------------------------------------------
 # Callback for writing data to database
@@ -91,7 +37,7 @@ def log_to_db():
     # Sample pulse counter
     pulseStat.sampleAndReset()
     cnt = pulseStat.getCnt()
-    print("(#{:d}, {:.4f}s, min:{:.4f} max:{:.4f} std:{:.8f})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseStat.getStd()))
+    print("(#{:d}, {:.4f}s, min:{:.4f} max:{:.4f} std:{:.8f})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseStat.getStdSqr()))
 
     # Insert into db
     points = []
@@ -104,10 +50,10 @@ def log_to_db():
         },
         "fields": {
              "value": cnt,
-             "pulse_mean": pulseStat.getMean(),
-             "pulse_min": pulseStat.getMin(),
-             "pulse_max": pulseStat.getMax(),
-             "pulse_std": pulseStat.getStd()
+             "pulse_mean":   pulseStat.getMean(),
+             "pulse_min":    pulseStat.getMin(),
+             "pulse_max":    pulseStat.getMax(),
+             "pulse_stdSqr": pulseStat.getStdSqr()
                 }
             }
     points.append(point)
@@ -132,7 +78,7 @@ def edge_cb(channel):
 
     if GPIO.input(PULSE_IO_NBR):
         pulseLen = tmr.sampleAndReset()
-        if(pulseLen > 0.015 and pulseLen < 0.15):
+        if(pulseLen > PULSE_LEN_MIN_s and pulseLen < PULSE_LEN_MAX_s):
             PulseDetected = True
     else:
         timeSinceLast = tmr.sampleAndReset()
