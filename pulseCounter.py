@@ -28,19 +28,18 @@ PULSE_LEN_MAX_s = 0.15
 # Global
 tmr = Timer()
 pulseStat = BatchCollector()
-
+points = []
 # ------------------------------------------------------
 # Callback for writing data to database
 def log_to_db():
-    global pulseStat
+    global pulseStat, points
 
     # Sample pulse counter
     pulseStat.sampleAndReset()
     cnt = pulseStat.getCnt()
-    print("(#{:d}, {:.4f}s, min:{:.4f} max:{:.4f} std:{:.8f})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseStat.getStdSqr()))
+    print("(#{:d}, mean:{:.4f}s, min:{:.4f} max:{:.4f})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax()))
 
     # Insert into db
-    points = []
     point = {
         "measurement": 'PulseCnt',
         "tags": {
@@ -60,11 +59,11 @@ def log_to_db():
     client = InfluxDBClient(HOST, PORT, USER, PASSWORD, DBNAME)
 
     if(client.write_points(points)):
+        points = []
         if VERBOSE:
             print("Inserting into influxdb, cnt: {}".format(cnt))
     else:
-       	# failure, add the point to the counter again
-        # PulseCnt = PulseCnt + cnt
+       	# failure, keep the pulses and try again next time
         print("Warning: failed inserting {} pulses into influxdb".format(cnt))
 
 # ------------------------------------------------------
@@ -103,7 +102,7 @@ def edge_cb(channel):
 
 # ------------------------------------------------------
 # Setup
-GPIO.setmode(GPIO.BCM)      # set up BCM GPIO numbering
+GPIO.setmode(GPIO.BCM) # set up BCM GPIO numbering
 GPIO.setwarnings(True)
 
 # Setup pulse input with pull up and connect callback on rising in edges
@@ -122,7 +121,6 @@ print("   _                __                  ")
 print("  |_)    |  _  _   /   _    __ _|_ _ __ ")
 print("  |  |_| | _> (/_  \__(_)|_|| | |_(/_|  ")
 print("----------------------------------------")
-
 
 try:
     while True:
