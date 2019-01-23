@@ -4,6 +4,7 @@ import RPi.GPIO as GPIO
 import time
 import schedule
 from influxdb import InfluxDBClient
+import math
 
 # ------------------------------------------------------
 # Influx cfg
@@ -14,11 +15,58 @@ HOST = 'localhost'
 PORT =  8086
 
 # defines
-VERBOSE = True
+VERBOSE = False
 PULSE_IO_NBR = 20
 LED_IO_NBR = 21
 PULSE_DEBOUNCE_ms = 5
 DB_LOG_INTERVAL_minutes = 1
+
+# ----------------------------------------------------
+class PulseStat:
+    def __init__(self):
+        self.sum = 0.0
+        self.sumSqr = 0.0
+        self.n = 0
+        self.last_std = 0.0
+        self.last_mean = 0.0
+        self.last_min = 0.0
+        self.last_max = 0.0
+        self.last_n = 0.0
+        self.min = 10000.0
+        self.max = 0.0
+    def add(self, sample):
+        self.sum = self.sum + sample
+        self.sumSqr = self.sumSqr + sample*sample
+        self.n = self.n + 1
+        if sample > self.max:
+            self.max = sample
+        if sample < self.min:
+            self.min = sample
+    def sampleAndReset(self):
+        n = self.n
+        sum = self.sum
+        self.n = 0
+        self.sum = 0.0
+        self.last_n = n
+        self.last_mean = sum/n
+        self.last_std = math.sqrt(self.sumSqr/n - self.last_mean*self.last_mean) 
+        self.last_max = self.max
+        self.last_min = self.min
+        self.sumSqr = 0.0
+        self.min = 10000.0
+        self.max = 0.0
+    def getCntNow(self):
+        return self.n
+    def getMean(self):
+        return self.last_mean
+    def getCnt(self):
+        return self.last_n
+    def getMin(self):
+        return self.last_min
+    def getMax(self):
+        return self.last_max
+    def getStd(self):
+        return self.last_std
 
 # -----------------------------------------------------
 class Timer:
@@ -32,18 +80,18 @@ class Timer:
         return diff
 
 # Global parameters
-PulseCnt = 0
 tmr = Timer()
+pulseStat = PulseStat()
 
 # ------------------------------------------------------
 # Callback for writing data to database
 def log_to_db():
-    global PulseCnt
+    global pulseStat
 
     # Sample pulse counter
-    cnt = PulseCnt
-    PulseCnt = 0
-    print("({})".format(cnt))
+    pulseStat.sampleAndReset()
+    cnt = pulseStat.getCnt()
+    print("(#{:d}, {:.4f}s, min:{:.4f} max:{:.4f} std:{:.8f})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseStat.getStd()))
 
     # Insert into db
     points = []
@@ -55,7 +103,11 @@ def log_to_db():
             "resolution": "10000"
         },
         "fields": {
-             "value": cnt
+             "value": cnt,
+             "pulse_mean": pulseStat.getMean(),
+             "pulse_min": pulseStat.getMin(),
+             "pulse_max": pulseStat.getMax(),
+             "pulse_std": pulseStat.getStd()
                 }
             }
     points.append(point)
@@ -66,13 +118,13 @@ def log_to_db():
             print("Inserting into influxdb, cnt: {}".format(cnt))
     else:
        	# failure, add the point to the counter again
-        PulseCnt = PulseCnt + cnt
+        # PulseCnt = PulseCnt + cnt
         print("Warning: failed inserting {} pulses into influxdb".format(cnt))
 
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
 def edge_cb(channel):
-    global PulseCnt, tmr
+    global pulseStat, tmr
 
     pulseLen = 0
     timeSinceLast = 0
@@ -85,13 +137,13 @@ def edge_cb(channel):
     else:
         timeSinceLast = tmr.sampleAndReset()
         if VERBOSE:
-            print("\n{},  tp {}".format(PulseCnt, timeSinceLast))
+            print("\n{},  tp {}".format(pulseStat.getCntNow(), timeSinceLast))
 
     if PulseDetected:
         if VERBOSE:
-            print("{}, len {}".format(PulseCnt, pulseLen))
+            print("{}, len {}".format(pulseStat.getCntNow(), pulseLen))
 
-        PulseCnt = PulseCnt+1
+        pulseStat.add(pulseLen)
         print(".", end="", flush=True)
 
         # New pulse detected, toggle the led
