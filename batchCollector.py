@@ -48,7 +48,7 @@ class BatchCollector:
         self.batch.reset()
         # calc mean
         self.result.mean   = self.result.sum   /self.result.n
-        # calc standard deviation, skip sqrt
+        # calc variance
         self.result.stdSqr = self.result.sumSqr/self.result.n - self.result.mean*self.result.mean
 
     # Getters
