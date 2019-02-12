@@ -8,16 +8,16 @@ Sensor: Osram, SFH 3310 phototransistor
 
 /lib/systemd/system/PulseCounter.service 
 
- [Unit]
- Description=My pulse counter Service
- After=multi-user.target
+     [Unit]
+     Description=My pulse counter Service
+     After=multi-user.target
 
- [Service]
- Type=idle
- WorkingDirectory=/home/pi/projects/git/pulseLogger/
- ExecStart=/usr/bin/python3 /home/pi/projects/git/pulseLogger/pulseCounter.py
- User=pi
- Restart=always
+     [Service]
+     Type=idle
+     WorkingDirectory=/home/pi/projects/git/pulseLogger/
+     ExecStart=/usr/bin/python3 /home/pi/projects/git/pulseLogger/pulseCounter.py
+     User=pi
+     Restart=always
 
- [Install]
- WantedBy=multi-user.target
+     [Install]
+     WantedBy=multi-user.target
