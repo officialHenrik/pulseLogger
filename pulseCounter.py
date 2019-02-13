@@ -106,7 +106,7 @@ def edge_cb(channel):
 GPIO.setmode(GPIO.BCM) # set up BCM GPIO numbering
 GPIO.setwarnings(True)
 
-# Setup pulse input with pull up and connect callback on rising in edges
+# Setup pulse input with pull up and connect callback on all edges
 GPIO.setup(PULSE_IO_NBR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(PULSE_IO_NBR, GPIO.BOTH,  callback=edge_cb, bouncetime=PULSE_DEBOUNCE_ms)
 
