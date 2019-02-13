@@ -118,11 +118,6 @@ schedule.every(DB_LOG_INTERVAL_minutes).minutes.do(log_to_db)
 
 # ------------------------------------------------------
 # Run forever
-print("   _                __                  ")
-print("  |_)    |  _  _   /   _    __ _|_ _ __ ")
-print("  |  |_| | _> (/_  \__(_)|_|| | |_(/_|  ")
-print("----------------------------------------")
-
 try:
     while True:
        	schedule.run_pending()
