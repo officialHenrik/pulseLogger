@@ -18,6 +18,7 @@ Sensor: Osram, SFH 3310 phototransistor
      ExecStart=/usr/bin/python3 /home/pi/projects/git/pulseLogger/pulseCounter.py
      User=pi
      Restart=always
+     RestartSec=10
 
      [Install]
      WantedBy=multi-user.target
