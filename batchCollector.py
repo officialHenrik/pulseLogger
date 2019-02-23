@@ -46,10 +46,12 @@ class BatchCollector:
         self.result.min    = self.batch.min
         # reset batch
         self.batch.reset()
-        # calc mean
-        self.result.mean   = self.result.sum   /self.result.n
-        # calc variance
-        self.result.stdSqr = self.result.sumSqr/self.result.n - self.result.mean*self.result.mean
+        
+        if self.result.n > 0:
+            # calc mean
+            self.result.mean   = self.result.sum   /self.result.n
+            # calc variance
+            self.result.stdSqr = self.result.sumSqr/self.result.n - self.result.mean*self.result.mean
 
     # Getters
     def getCntNow(self):
