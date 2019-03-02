@@ -32,6 +32,7 @@ PULSE = {
     "batch_length_s": 60
 }
 
-VERBOSE = True
+VERBOSE_PULSE_CNT = False
+VERBOSE = False
 PULSE_IO_NBR =  20
 LED_IO_NBR = 21
