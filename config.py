@@ -10,7 +10,6 @@ DB = {
 
 # defines home
 #PULSE = {
-#    'VERBOSE': False,
 #    'PULSE_DEBOUNCE_ms': 5,
 #    'PULSE_LEN_MIN_s': 0.015,
 #    'PULSE_LEN_MAX_s': 0.15,
@@ -23,7 +22,6 @@ DB = {
 
 # defines tg
 PULSE = {
-    'VERBOSE': False,
     'PULSE_DEBOUNCE_ms': 1,
     'PULSE_LEN_MIN_s': 0.002,
     'PULSE_LEN_MAX_s': 0.034,
@@ -34,5 +32,6 @@ PULSE = {
     "batch_length_s": 60 
 }
 
+VERBOSE = True
 PULSE_IO_NBR =  20
 LED_IO_NBR = 21

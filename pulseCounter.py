@@ -28,7 +28,7 @@ try:
                             config.DB['DBNAME'])
 except:
     print("Influxdb connection fault")
-    
+
 # ------------------------------------------------------
 # Callback for writing data to database
 def log_to_db():
@@ -39,7 +39,7 @@ def log_to_db():
     # Sample pulse counter
     pulseStat.sampleAndReset()
     cnt = pulseStat.getCnt()
-    if config.PULSE['VERBOSE']:
+    if config.VERBOSE:
         print("(#{:d}, mean:{:.4f}s, min:{:.4f} max:{:.4f}, discarded:{})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseDiscardedCnt))
 
     # Insert into db
@@ -62,11 +62,11 @@ def log_to_db():
                     }
             }
     points.append(point)
-    
+
     if(client.write_points(points)):
         points = []
         pulseDiscardedCnt = 0
-        if config.PULSE['VERBOSE']:
+        if config.VERBOSE:
             print("Inserting into influxdb, cnt: {}".format(cnt))
     else:
        	# failure, keep the pulses and try again next time
@@ -88,9 +88,9 @@ def edge_cb(channel):
             pulseStat.add(pulseLen)
         else:
             pulseDiscardedCnt += 1
-            
+
         GPIO.output(config.LED_IO_NBR, GPIO.LOW) # Debug led off
-            
+
     else:
         tmr.reset()
         GPIO.output(config.LED_IO_NBR,GPIO.HIGH) # Debug led on
@@ -108,7 +108,7 @@ GPIO.add_event_detect(config.PULSE_IO_NBR, GPIO.BOTH,  callback=edge_cb, bouncet
 
 # Led output
 GPIO.setup(config.LED_IO_NBR, GPIO.OUT)
-GPIO.output(LED_IO_NBR, GPIO.HIGH)
+GPIO.output(config.LED_IO_NBR, GPIO.HIGH)
 
 # Schedule logging of pulse counter value
 schedule.every(config.PULSE['batch_length_s']).seconds.do(log_to_db)
