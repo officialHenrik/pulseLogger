@@ -2,66 +2,71 @@
 
 import RPi.GPIO as GPIO
 import time
+from datetime import datetime
 import schedule
 from influxdb import InfluxDBClient
 
 from batchCollector import BatchCollector
 from timer import Timer
 
+import config
+
 # ------------------------------------------------------
-# Influx cfg
-USER = 'root'
-PASSWORD = 'root'
-DBNAME = 'test'
-HOST = 'localhost'
-PORT =  8086
-
-# defines
-VERBOSE = False
-PULSE_IO_NBR = 20
-LED_IO_NBR = 21
-PULSE_DEBOUNCE_ms = 5
-DB_LOG_INTERVAL_minutes = 1
-PULSE_LEN_MIN_s = 0.015
-PULSE_LEN_MAX_s = 0.15
-
 # Global
 tmr = Timer()
 pulseStat = BatchCollector()
 points = []
+pulseDiscardedCnt = 0
+
+# Influx client
+# Instantiate a connection to the InfluxDB
+try:
+    client = InfluxDBClient(config.DB['HOST'], 
+                            config.DB['PORT'], 
+                            config.DB['USER'], 
+                            config.DB['PASSWORD'], 
+                            config.DB['DBNAME'])
+except:
+    print("Influxdb connection fault")
+    
 # ------------------------------------------------------
 # Callback for writing data to database
 def log_to_db():
-    global pulseStat, points
+    global pulseStat, points, pulseDiscardedCnt, client, config
+
+    current_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # Sample pulse counter
     pulseStat.sampleAndReset()
     cnt = pulseStat.getCnt()
-    print("(#{:d}, mean:{:.4f}s, min:{:.4f} max:{:.4f})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax()))
+    if config.PULSE['VERBOSE']:
+        print("(#{:d}, mean:{:.4f}s, min:{:.4f} max:{:.4f}, discarded:{})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseDiscardedCnt))
 
     # Insert into db
     point = {
-        "measurement": 'PulseCnt',
-        "tags": {
-            "location": "home",
-            "sensor": "p.1",
-            "resolution": "10000",
-            "batch_length_s": "60" 
-        },
-        "fields": {
-             "value": cnt,
-             "pulse_mean":   pulseStat.getMean(),
-             "pulse_min":    pulseStat.getMin(),
-             "pulse_max":    pulseStat.getMax(),
-             "pulse_stdSqr": pulseStat.getStdSqr()
-                }
+            "measurement": 'PulseCnt',
+            "time": current_time,
+            "tags": {
+                "location": config.PULSE['location'],
+                "sensor": config.PULSE['sensor'],
+                "resolution": config.PULSE['resolution'],
+                "batch_length_s": config.PULSE['batch_length_s'] 
+            },
+            "fields": {
+                "value":           cnt,
+                "pulse_mean":      pulseStat.getMean(),
+                "pulse_min":       pulseStat.getMin(),
+                "pulse_max":       pulseStat.getMax(),
+                "pulse_stdSqr":    pulseStat.getStdSqr(),
+                "pulse_discarded": pulseDiscardedCnt
+                    }
             }
     points.append(point)
-    client = InfluxDBClient(HOST, PORT, USER, PASSWORD, DBNAME)
-
+    
     if(client.write_points(points)):
         points = []
-        if VERBOSE:
+        pulseDiscardedCnt = 0
+        if config.PULSE['VERBOSE']:
             print("Inserting into influxdb, cnt: {}".format(cnt))
     else:
        	# failure, keep the pulses and try again next time
@@ -70,51 +75,43 @@ def log_to_db():
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
 def edge_cb(channel):
-    global pulseStat, tmr
+    global pulseStat, tmr, pulseDiscardedCnt, config
 
-    pulseLen = 0
-    timeSinceLast = 0
-    PulseDetected = False
-
-    if GPIO.input(PULSE_IO_NBR):
+    # Rising or falling edge?
+    if GPIO.input(config.PULSE_IO_NBR):
+        # Rising edge, pulse done.
         pulseLen = tmr.sampleAndReset()
-        if(pulseLen > PULSE_LEN_MIN_s and pulseLen < PULSE_LEN_MAX_s):
-            PulseDetected = True
-    else:
-        timeSinceLast = tmr.sampleAndReset()
-        if VERBOSE:
-            print("\n{},  tp {}".format(pulseStat.getCntNow(), timeSinceLast))
-
-    if PulseDetected:
-        if VERBOSE:
-            print("{}, len {}".format(pulseStat.getCntNow(), pulseLen))
-
-        pulseStat.add(pulseLen)
-        print(".", end="", flush=True)
-
-        # New pulse detected, toggle the led
-        if GPIO.input(LED_IO_NBR):
-            GPIO.output(LED_IO_NBR, GPIO.LOW)
+        # Check pulse length
+        if(pulseLen > config.PULSE['PULSE_LEN_MIN_s'] and 
+           pulseLen < config.PULSE['PULSE_LEN_MAX_s']):
+            # Valid pulse
+            pulseStat.add(pulseLen)
         else:
-            GPIO.output(LED_IO_NBR,GPIO.HIGH)
+            pulseDiscardedCnt += 1
+            
+        GPIO.output(config.LED_IO_NBR, GPIO.LOW) # Debug led off
+            
     else:
-        if pulseLen > 0:
-            print("Pulse discarded, len {}".format(pulseLen))
+        tmr.reset()
+        GPIO.output(config.LED_IO_NBR,GPIO.HIGH) # Debug led on
+
 
 # ------------------------------------------------------
+   
 # Setup
 GPIO.setmode(GPIO.BCM) # set up BCM GPIO numbering
 GPIO.setwarnings(True)
 
 # Setup pulse input with pull up and connect callback on all edges
-GPIO.setup(PULSE_IO_NBR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(PULSE_IO_NBR, GPIO.BOTH,  callback=edge_cb, bouncetime=PULSE_DEBOUNCE_ms)
+GPIO.setup(config.PULSE_IO_NBR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(config.PULSE_IO_NBR, GPIO.BOTH,  callback=edge_cb, bouncetime=config.PULSE['PULSE_DEBOUNCE_ms'])
 
 # Led output
-GPIO.setup(LED_IO_NBR,GPIO.OUT)
+GPIO.setup(config.LED_IO_NBR, GPIO.OUT)
+GPIO.output(LED_IO_NBR, GPIO.HIGH)
 
 # Schedule logging of pulse counter value
-schedule.every(DB_LOG_INTERVAL_minutes).minutes.do(log_to_db)
+schedule.every(config.PULSE['batch_length_s']).seconds.do(log_to_db)
 
 # ------------------------------------------------------
 # Run forever

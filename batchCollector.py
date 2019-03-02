@@ -52,6 +52,9 @@ class BatchCollector:
             self.result.mean   = self.result.sum   /self.result.n
             # calc variance
             self.result.stdSqr = self.result.sumSqr/self.result.n - self.result.mean*self.result.mean
+        else:
+            self.result.mean = 0
+            self.result.stdSqr = 0
 
     # Getters
     def getCntNow(self):

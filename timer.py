@@ -12,3 +12,6 @@ class Timer:
         diff = now - self.start
         self.start = now
         return diff
+
+    def reset(self):
+        self.start = time.time()
