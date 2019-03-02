@@ -1,35 +1,38 @@
+
+# Influx cfg
 DB = {
-    'host': 'localhost',
-    'dbname': 'test',
-    'user': 'admin',
-    'password': 'admin',
-    'port': 8086,
-    'querys':  [
-               'SELECT temp FROM Temp where \"sensor\"=\'smhi\' order by desc limit 1;',
-               'select temp from Temp where \"location\"=\'tg_kitchen\' order by desc limit 1;',
-               'select temp from Temp where \"location\"=\'tg_verkstad\' order by desc limit 1;',
-               'select value from PulseCnt order by desc limit 1;'
-               ],
-    'log_interval_minutes': 1
+    'USER': 'root',
+    'PASSWORD': 'root',
+    'DBNAME': 'test',
+    'HOST': 'localhost',
+    'PORT':  8086
 }
 
-DB2 = {
-    'host': '192.168.0.101',
-    'dbname': 'db_sensors',
-    'user': 'root',
-    'password': 'root',
-    'port': 8086,
-    'querys': ['select temperatureFROM climate group by * order by desc limit 1;',
-               'select humidity, dewpoint FROM climate group by * order by desc limit 1;',
-               'select dewpoint FROM climate group by * order by desc limit 1;'
-              ]
+# defines home
+#PULSE = {
+#    'VERBOSE': False,
+#    'PULSE_DEBOUNCE_ms': 5,
+#    'PULSE_LEN_MIN_s': 0.015,
+#    'PULSE_LEN_MAX_s': 0.15,
+#    
+#    "location": "home",
+#    "sensor": "p.1",
+#    "resolution": "10000",
+#   "batch_length_s": 60 
+#}
+
+# defines tg
+PULSE = {
+    'VERBOSE': False,
+    'PULSE_DEBOUNCE_ms': 1,
+    'PULSE_LEN_MIN_s': 0.002,
+    'PULSE_LEN_MAX_s': 0.034,
+    
+    "location": "tg",
+    "sensor": "p.2",
+    "resolution": "1222222000",
+    "batch_length_s": 60 
 }
 
-GOOGLE = {
-    'credentials': 'Torpgarden-f1098109e149.json',
-    'key': '1lK_qpAP7nXOxBu1Nl5oPMKbYJdeecNaP0l8MHCkeJWM',
-    'sheet': "tg",
-    'scope': ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-}
-
-
+PULSE_IO_NBR =  20
+LED_IO_NBR = 21
