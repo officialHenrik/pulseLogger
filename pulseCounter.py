@@ -38,11 +38,14 @@ def log_to_db():
 
     # Sample pulse counter
     pulseStat.sampleAndReset()
-    cnt = pulseStat.getCnt()
     if config.VERBOSE:
-        print("(#{:d}, mean:{:.4f}s, min:{:.4f} max:{:.4f}, discarded:{})".format(cnt, pulseStat.getMean(), pulseStat.getMin(), pulseStat.getMax(), pulseDiscardedCnt))
-
-    # Insert into db
+        print("(#{:d}, mean:{:.4f}s, min:{:.4f} max:{:.4f}, discarded:{})".format(pulseStat.getCnt(), 
+                                                                                  pulseStat.getMean(), 
+                                                                                  pulseStat.getMin(), 
+                                                                                  pulseStat.getMax(), 
+                                                                                  pulseDiscardedCnt))
+    
+    # Generate pulse batch entry
     point = {
             "measurement": 'PulseCnt',
             "time": current_time,
@@ -53,7 +56,7 @@ def log_to_db():
                 "batch_length_s": config.PULSE['batch_length_s'] 
             },
             "fields": {
-                "value":           cnt,
+                "value":           pulseStat.getCnt(),
                 "pulse_mean":      pulseStat.getMean(),
                 "pulse_min":       pulseStat.getMin(),
                 "pulse_max":       pulseStat.getMax(),
@@ -63,14 +66,16 @@ def log_to_db():
             }
     points.append(point)
 
+    # Insert into db
     if(client.write_points(points)):
+        # Success
         points = []
         pulseDiscardedCnt = 0
         if config.VERBOSE:
-            print("Inserting into influxdb, cnt: {}".format(cnt))
+            print("Inserting into influxdb, cnt: {}".format(pulseStat.getCnt()))
     else:
        	# failure, keep the pulses and try again next time
-        print("Warning: failed inserting {} pulses into influxdb".format(cnt))
+        print("Warning: failed inserting pulses into influxd")
 
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
@@ -87,11 +92,13 @@ def edge_cb(channel):
             # Valid pulse
             pulseStat.add(pulseLen)
         else:
+            # Pulse looks strange, discard it
             pulseDiscardedCnt += 1
 
         GPIO.output(config.LED_IO_NBR, GPIO.LOW) # Debug led off
 
     else:
+        # Falling edge, start of pulse. Start timer
         tmr.reset()
         GPIO.output(config.LED_IO_NBR,GPIO.HIGH) # Debug led on
 
