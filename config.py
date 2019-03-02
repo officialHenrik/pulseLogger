@@ -22,7 +22,7 @@ DB = {
 
 # defines tg
 PULSE = {
-    'PULSE_DEBOUNCE_ms': 1,
+    'PULSE_DEBOUNCE_ms': 2,
     'PULSE_LEN_MIN_s': 0.002,
     'PULSE_LEN_MAX_s': 0.034,
     
