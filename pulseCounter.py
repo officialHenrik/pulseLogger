@@ -77,6 +77,9 @@ def log_to_db():
        	# failure, keep the pulses and try again next time
         print("Warning: failed inserting pulses into influxd")
 
+    if config.VERBOSE_PULSE_CNT:
+        print("({})".format(pulseStat.getCnt()))
+        
 # ------------------------------------------------------
 # Callback function to run in another thread when edges are detected
 def edge_cb(channel):
@@ -91,6 +94,9 @@ def edge_cb(channel):
            pulseLen < config.PULSE['PULSE_LEN_MAX_s']):
             # Valid pulse
             pulseStat.add(pulseLen)
+            # Print pulse dot
+            if config.VERBOSE_PULSE_CNT:
+                print(".", end="", flush=True)
         else:
             # Pulse looks strange, discard it
             pulseDiscardedCnt += 1
