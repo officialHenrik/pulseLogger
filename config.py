@@ -28,8 +28,8 @@ PULSE = {
     
     "location": "tg",
     "sensor": "p.2",
-    "resolution": "1222222000",
-    "batch_length_s": 60 
+    "resolution": "1000",
+    "batch_length_s": 60
 }
 
 VERBOSE = True
