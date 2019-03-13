@@ -65,12 +65,12 @@ def log_to_db():
                     }
             }
     points.append(point)
+    pulseDiscardedCnt = 0
 
     # Insert into db
     if(client.write_points(points)):
         # Success
         points = []
-        pulseDiscardedCnt = 0
         if config.VERBOSE:
             print("Inserting into influxdb, cnt: {}".format(pulseStat.getCnt()))
     else:
