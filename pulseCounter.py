@@ -131,6 +131,6 @@ schedule.every(config.PULSE['batch_length_s']).seconds.do(log_to_db)
 try:
     while True:
        	schedule.run_pending()
-        time.sleep(1)
+        time.sleep(0.25)
 finally:
     GPIO.cleanup() # clean up 
