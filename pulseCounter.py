@@ -65,12 +65,12 @@ def log_to_db():
                     }
             }
     points.append(point)
+    pulseDiscardedCnt = 0
 
     # Insert into db
     if(client.write_points(points)):
         # Success
         points = []
-        pulseDiscardedCnt = 0
         if config.VERBOSE:
             print("Inserting into influxdb, cnt: {}".format(pulseStat.getCnt()))
     else:
@@ -131,7 +131,11 @@ schedule.every().minute.at(":00").do(log_to_db)
 try:
     while True:
        	schedule.run_pending()
+<<<<<<< HEAD
         time.sleep(0.5)
+=======
+        time.sleep(1) # sleep 1s
+>>>>>>> 95af0e94982f37c96ccd9ad99274937d785a3263
 finally:
     GPIO.cleanup() # clean up 
 GPIO.cleanup() # clean up, default
