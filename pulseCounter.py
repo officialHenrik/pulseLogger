@@ -124,13 +124,14 @@ GPIO.setup(config.LED_IO_NBR, GPIO.OUT)
 GPIO.output(config.LED_IO_NBR, GPIO.HIGH)
 
 # Schedule logging of pulse counter value
-schedule.every(config.PULSE['batch_length_s']).seconds.do(log_to_db)
+schedule.every().minute.at(":00").do(log_to_db)
 
 # ------------------------------------------------------
 # Run forever
 try:
     while True:
        	schedule.run_pending()
-        time.sleep(1)
+        time.sleep(0.5)
 finally:
     GPIO.cleanup() # clean up 
+GPIO.cleanup() # clean up, default
