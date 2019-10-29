@@ -131,11 +131,7 @@ schedule.every().minute.at(":00").do(log_to_db)
 try:
     while True:
        	schedule.run_pending()
-<<<<<<< HEAD
         time.sleep(0.5)
-=======
-        time.sleep(1) # sleep 1s
->>>>>>> 95af0e94982f37c96ccd9ad99274937d785a3263
 finally:
     GPIO.cleanup() # clean up 
 GPIO.cleanup() # clean up, default
